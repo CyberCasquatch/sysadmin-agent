@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<!--
+  SysAdmin Documentation Agent
+  A Claude Artifact — paste this into Claude.ai or use via the Anthropic API.
+  See README.md for usage instructions.
+-->
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --green:#00c853;--green-dim:#00c85322;--green-text:#00c853;
+    --amber:#ffab00;--amber-dim:#ffab0022;
+    --red:#ff5252;--blue:#448aff;--blue-dim:#448aff18;
+    --mono:'JetBrains Mono',monospace;--sans:'DM Sans',sans-serif;
+    --bg:var(--color-background-primary);--bg2:var(--color-background-secondary);
+    --bg3:var(--color-background-tertiary);
+    --txt:var(--color-text-primary);--txt2:var(--color-text-secondary);
+    --brd:var(--color-border-tertiary);--brd2:var(--color-border-secondary);
+  }
+  body{font-family:var(--sans);background:transparent;color:var(--txt);min-height:600px}
+
+  /* Layout */
+  .app{display:flex;flex-direction:column;height:100%;min-height:600px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:0.5px solid var(--brd2);background:var(--bg)}
+  .logo{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--green);letter-spacing:0.05em}
+  .logo-sub{font-family:var(--mono);font-size:11px;color:var(--txt2);margin-left:4px}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-left:auto;animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .status-label{font-family:var(--mono);font-size:10px;color:var(--green)}
+
+  /* Quick actions row */
+  .quick-row{display:flex;gap:6px;padding:10px 14px;border-bottom:0.5px solid var(--brd);overflow-x:auto;flex-shrink:0;background:var(--bg2)}
+  .quick-row::-webkit-scrollbar{height:3px}
+  .quick-row::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
+  .chip{font-family:var(--mono);font-size:10px;white-space:nowrap;padding:5px 10px;border-radius:20px;border:0.5px solid var(--brd2);background:var(--bg);color:var(--txt2);cursor:pointer;transition:all .15s;flex-shrink:0}
+  .chip:hover{border-color:var(--green);color:var(--green);background:var(--green-dim)}
+  .chip.active{border-color:var(--green);color:var(--green);background:var(--green-dim)}
+
+  /* Main body */
+  .body{display:flex;flex:1;min-height:0;overflow:hidden}
+
+  /* Sidebar */
+  .sidebar{width:200px;flex-shrink:0;border-right:0.5px solid var(--brd);overflow-y:auto;background:var(--bg2);padding:10px 0}
+  .sidebar::-webkit-scrollbar{width:3px}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--brd2)}
+  .sidebar-section{margin-bottom:16px}
+  .sidebar-label{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--txt2);padding:0 14px 6px;letter-spacing:.1em;text-transform:uppercase}
+  .sidebar-item{display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:12px;color:var(--txt2);transition:all .12s;border-left:2px solid transparent}
+  .sidebar-item:hover{background:var(--bg);color:var(--txt);border-left-color:var(--brd2)}
+  .sidebar-item.active{background:var(--bg);color:var(--green);border-left-color:var(--green)}
+  .sidebar-icon{font-size:14px;width:16px;text-align:center;flex-shrink:0}
+  .badge{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:10px;background:var(--green-dim);color:var(--green);margin-left:auto}
+
+  /* Chat area */
+  .chat-area{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+  .messages{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+  .messages::-webkit-scrollbar{width:3px}
+  .messages::-webkit-scrollbar-thumb{background:var(--brd2)}
+
+  /* Message bubbles */
+  .msg{display:flex;gap:10px;align-items:flex-start;animation:fadein .2s ease}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .msg-avatar{width:28px;height:28px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600}
+  .msg-avatar.bot{background:var(--green-dim);border:0.5px solid var(--green);color:var(--green)}
+  .msg-avatar.user{background:var(--blue-dim);border:0.5px solid var(--blue);color:var(--blue)}
+  .msg-body{flex:1;min-width:0}
+  .msg-meta{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+  .msg-name{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--txt2)}
+  .msg-time{font-family:var(--mono);font-size:9px;color:var(--txt2);opacity:.6}
+  .msg-type-badge{font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:10px}
+  .msg-type-badge.runbook{background:#448aff18;color:var(--blue)}
+  .msg-type-badge.checklist{background:#00c85318;color:var(--green)}
+  .msg-type-badge.tree{background:#ffab0022;color:var(--amber)}
+  .msg-type-badge.template{background:#ff525218;color:var(--red)}
+  .msg-content{font-size:13px;line-height:1.7;color:var(--txt)}
+  .msg-content p{margin-bottom:8px}
+  .msg-content p:last-child{margin-bottom:0}
+
+  /* Doc output cards */
+  .doc-card{margin-top:10px;border:0.5px solid var(--brd2);border-radius:10px;overflow:hidden;background:var(--bg)}
+  .doc-header{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg2);border-bottom:0.5px solid var(--brd)}
+  .doc-title{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--txt)}
+  .doc-copy{font-family:var(--mono);font-size:10px;padding:3px 8px;border:0.5px solid var(--brd2);border-radius:5px;background:var(--bg);color:var(--txt2);cursor:pointer;margin-left:auto;transition:all .12s}
+  .doc-copy:hover{border-color:var(--green);color:var(--green)}
+  .doc-body{padding:12px 14px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--txt);max-height:340px;overflow-y:auto;white-space:pre-wrap;word-wrap:break-word}
+  .doc-body::-webkit-scrollbar{width:3px}
+  .doc-body::-webkit-scrollbar-thumb{background:var(--brd2)}
+  .doc-body .h1{color:var(--green);font-weight:600}
+  .doc-body .h2{color:var(--blue);font-weight:500}
+  .doc-body .h3{color:var(--amber);font-weight:500}
+  .doc-body .check{color:var(--green)}
+  .doc-body .warn{color:var(--amber)}
+  .doc-body .err{color:var(--red)}
+  .doc-body .comment{color:var(--txt2);font-style:italic}
+
+  /* Thinking indicator */
+  .thinking{display:flex;align-items:center;gap:6px;padding:6px 0}
+  .thinking span{width:6px;height:6px;border-radius:50%;background:var(--green);animation:bounce .9s ease-in-out infinite}
+  .thinking span:nth-child(2){animation-delay:.18s}
+  .thinking span:nth-child(3){animation-delay:.36s}
+  @keyframes bounce{0%,100%{opacity:.25}50%{opacity:1}}
+  .thinking-text{font-family:var(--mono);font-size:10px;color:var(--txt2)}
+
+  /* Input area */
+  .input-area{border-top:0.5px solid var(--brd2);padding:12px 14px;background:var(--bg)}
+  .input-row{display:flex;gap:8px;align-items:flex-end}
+  .input-wrap{flex:1;border:0.5px solid var(--brd2);border-radius:10px;background:var(--bg2);display:flex;align-items:center;padding:8px 12px;gap:8px;transition:border-color .15s}
+  .input-wrap:focus-within{border-color:var(--green)}
+  .input-wrap textarea{flex:1;background:none;border:none;outline:none;font-family:var(--sans);font-size:13px;color:var(--txt);resize:none;max-height:100px;line-height:1.5}
+  .input-wrap textarea::placeholder{color:var(--txt2);opacity:.6}
+  .send-btn{width:36px;height:36px;border-radius:8px;background:var(--green-dim);border:0.5px solid var(--green);color:var(--green);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;font-size:14px}
+  .send-btn:hover{background:var(--green);color:#000}
+  .send-btn:disabled{opacity:.3;cursor:default}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="logo">SYS<span style="color:var(--txt2)">://</span>ADMIN</div>
+    <div class="logo-sub">documentation agent</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+      <div class="status-dot"></div>
+      <div class="status-label">ONLINE</div>
+    </div>
+  </div>
+
+  <div class="quick-row" id="chips">
+    <div class="chip active" onclick="setCategory('all')">All</div>
+    <div class="chip" onclick="setCategory('runbook')">Runbooks</div>
+    <div class="chip" onclick="setCategory('checklist')">Checklists</div>
+    <div class="chip" onclick="setCategory('tree')">Troubleshooting</div>
+    <div class="chip" onclick="setCategory('template')">Templates</div>
+    <div class="chip" onclick="insertSample('AD user lockout runbook')">🔷 AD User Lockout</div>
+    <div class="chip" onclick="insertSample('DNS resolution failure troubleshooting tree')">🌐 DNS Failures</div>
+    <div class="chip" onclick="insertSample('DHCP scope exhaustion checklist')">📡 DHCP Scope</div>
+    <div class="chip" onclick="insertSample('Backup verification runbook')">💾 Backup Verify</div>
+    <div class="chip" onclick="insertSample('Monthly Windows patching checklist')">🩹 Patching</div>
+    <div class="chip" onclick="insertSample('Incident response template for P1 outage')">🚨 Incident Response</div>
+  </div>
+
+  <div class="body">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Generate</div>
+        <div class="sidebar-item active" onclick="insertPromptType('runbook')"><span class="sidebar-icon">📋</span>Runbook<span class="badge">new</span></div>
+        <div class="sidebar-item" onclick="insertPromptType('checklist')"><span class="sidebar-icon">✅</span>Checklist</div>
+        <div class="sidebar-item" onclick="insertPromptType('tree')"><span class="sidebar-icon">🌳</span>Troubleshoot</div>
+        <div class="sidebar-item" onclick="insertPromptType('template')"><span class="sidebar-icon">📄</span>Template</div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Topics</div>
+        <div class="sidebar-item" onclick="insertSample('Active Directory password reset runbook')"><span class="sidebar-icon">🔷</span>Active Directory</div>
+        <div class="sidebar-item" onclick="insertSample('DNS forward lookup failure troubleshooting tree')"><span class="sidebar-icon">🌐</span>DNS</div>
+        <div class="sidebar-item" onclick="insertSample('DHCP lease renewal checklist')"><span class="sidebar-icon">📡</span>DHCP</div>
+        <div class="sidebar-item" onclick="insertSample('Backup restoration checklist')"><span class="sidebar-icon">💾</span>Backups</div>
+        <div class="sidebar-item" onclick="insertSample('Patch Tuesday deployment runbook')"><span class="sidebar-icon">🩹</span>Patching</div>
+        <div class="sidebar-item" onclick="insertSample('P1 incident response runbook')"><span class="sidebar-icon">🚨</span>Incidents</div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Format</div>
+        <div class="sidebar-item" onclick="insertSample('markdown runbook for server reboot with rollback steps')"><span class="sidebar-icon">📝</span>Markdown</div>
+        <div class="sidebar-item" onclick="insertSample('numbered checklist for OS hardening')"><span class="sidebar-icon">🔢</span>Numbered</div>
+        <div class="sidebar-item" onclick="insertSample('decision tree for network timeout errors')"><span class="sidebar-icon">🌿</span>Decision Tree</div>
+      </div>
+    </div>
+
+    <div class="chat-area">
+      <div class="messages" id="messages">
+        <div class="msg">
+          <div class="msg-avatar bot">SYS</div>
+          <div class="msg-body">
+            <div class="msg-meta">
+              <span class="msg-name">SysAdmin Agent</span>
+              <span class="msg-time">now</span>
+            </div>
+            <div class="msg-content">
+              <p>Ready. I generate <strong>runbooks</strong>, <strong>checklists</strong>, <strong>troubleshooting trees</strong>, and <strong>documentation templates</strong> for your infrastructure.</p>
+              <p>Pick a quick-start chip above, click a topic in the sidebar, or describe what you need.</p>
+            </div>
+            <div class="doc-card">
+              <div class="doc-header">
+                <span class="doc-title">sample prompts</span>
+              </div>
+              <div class="doc-body"><span class="h2">Runbooks</span>
+• "AD user lockout runbook with rollback"
+• "Patch Tuesday deployment runbook"
+• "P1 incident response runbook"
+
+<span class="h2">Checklists</span>
+• "DHCP scope exhaustion remediation checklist"
+• "Pre-reboot server checklist"
+• "Backup verification checklist"
+
+<span class="h2">Troubleshooting Trees</span>
+• "DNS resolution failure decision tree"
+• "Network timeout troubleshooting tree"
+• "AD login failure diagnosis tree"
+
+<span class="h2">Templates</span>
+• "Post-incident review template"
+• "Change request documentation template"
+• "On-call handoff template"</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-row">
+          <div class="input-wrap">
+            <textarea id="userInput" rows="1"
+              placeholder="Describe the runbook, checklist, or template you need..."
+              onkeydown="handleKey(event)"
+              oninput="autoResize(this)"></textarea>
+          </div>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── System prompt ────────────────────────────────────────────────────────────
+// Edit this to match your environment, naming conventions, or tooling.
+const SYSTEM_PROMPT = `You are SysAdmin Agent — an expert IT infrastructure documentation assistant.
+You generate professional, production-ready runbooks, checklists, troubleshooting trees,
+and documentation templates for sysadmins.
+
+DOMAINS: Active Directory, DNS, DHCP, Windows Server, Linux, backups, patching,
+incident response, networking, virtualization (VMware/Hyper-V), cloud (Azure AD, AWS).
+
+OUTPUT RULES:
+- Always start with a header block: document type, title, version, date, author placeholder,
+  severity/priority if applicable
+- Use clear numbered or bulleted steps
+- Include pre-conditions/prerequisites section
+- Include rollback or recovery steps where relevant
+- Add verification/validation steps
+- For troubleshooting trees: use structured IF/THEN/ELSE logic with clear branch points
+- For incident response: follow ITIL/NIST framework conventions
+- Include relevant PowerShell, bash, or CLI commands in code blocks (triple backticks)
+- Include expected outputs and what-to-look-for notes
+- Keep it concise but complete — no fluff, no generic advice
+- Tag each section clearly: [RUNBOOK], [CHECKLIST], [TROUBLESHOOTING TREE], or [TEMPLATE]
+- End with a Document Control footer: review date, owner placeholder, classification
+
+FORMAT: Plain text optimised for readability. Use ===, ---, ###, checkmarks, warnings,
+and errors for visual hierarchy. PowerShell/bash commands in triple backtick blocks.
+
+Respond ONLY with the document. No preamble, no meta-commentary.`;
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let isLoading = false;
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function setCategory(cat) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function insertSample(text) {
+  const el = document.getElementById('userInput');
+  el.value = text;
+  autoResize(el);
+  el.focus();
+}
+
+function insertPromptType(type) {
+  const prefixes = {
+    runbook:  'Generate a runbook for: ',
+    checklist:'Create a checklist for: ',
+    tree:     'Build a troubleshooting tree for: ',
+    template: 'Write a documentation template for: '
+  };
+  const el = document.getElementById('userInput');
+  el.value = prefixes[type] || '';
+  autoResize(el);
+  el.focus();
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+function detectDocType(content) {
+  const low = content.toLowerCase();
+  if (low.includes('[runbook]')      || low.includes('runbook'))      return 'runbook';
+  if (low.includes('[checklist]')    || low.includes('checklist'))    return 'checklist';
+  if (low.includes('[troubleshoot]') || low.includes('decision tree') || low.includes('troubleshoot')) return 'tree';
+  if (low.includes('[template]')     || low.includes('template'))     return 'template';
+  return 'runbook';
+}
+
+function renderDocContent(text) {
+  return text
+    .replace(/^(={3,}.+?={3,})$/gm,  '<span class="h1">$1</span>')
+    .replace(/^(#{1,2} .+)$/gm,       '<span class="h2">$1</span>')
+    .replace(/^(### .+)$/gm,           '<span class="h3">$1</span>')
+    .replace(/^(\[RUNBOOK\]|\[CHECKLIST\]|\[TROUBLESHOOTING TREE\]|\[TEMPLATE\])/gm, '<span class="h1">$1</span>')
+    .replace(/(✅[^\n]*)/g,  '<span class="check">$1</span>')
+    .replace(/(⚠️[^\n]*)/g, '<span class="warn">$1</span>')
+    .replace(/(❌[^\n]*)/g,  '<span class="err">$1</span>');
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyDoc(btn) {
+  const body = btn.closest('.doc-card').querySelector('.doc-body');
+  const raw  = decodeURIComponent(body.getAttribute('data-raw'));
+  navigator.clipboard.writeText(raw).then(() => {
+    btn.textContent = 'copied!';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => { btn.textContent = 'copy'; btn.style.color = ''; }, 1500);
+  });
+}
+
+// ─── Message rendering ────────────────────────────────────────────────────────
+function appendMessage(role, content, docContent, docType, docTitle) {
+  const msgs = document.getElementById('messages');
+  const time  = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  const typeBadge = docType
+    ? `<span class="msg-type-badge ${docType}">${docType}</span>` : '';
+
+  const docCard = docContent ? `
+    <div class="doc-card">
+      <div class="doc-header">
+        <span class="doc-title">${docTitle || 'generated document'}</span>
+        ${typeBadge}
+        <button class="doc-copy" onclick="copyDoc(this)">copy</button>
+      </div>
+      <div class="doc-body" data-raw="${encodeURIComponent(docContent)}">${renderDocContent(escapeHtml(docContent))}</div>
+    </div>` : '';
+
+  const isBot = role === 'bot';
+  const div   = document.createElement('div');
+  div.className = 'msg';
+  div.innerHTML = `
+    <div class="msg-avatar ${isBot ? 'bot' : 'user'}">${isBot ? 'SYS' : 'YOU'}</div>
+    <div class="msg-body">
+      <div class="msg-meta">
+        <span class="msg-name">${isBot ? 'SysAdmin Agent' : 'You'}</span>
+        <span class="msg-time">${time}</span>
+      </div>
+      <div class="msg-content"><p>${escapeHtml(content)}</p></div>
+      ${docCard}
+    </div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendThinking() {
+  const msgs = document.getElementById('messages');
+  const div  = document.createElement('div');
+  div.className = 'msg';
+  div.id = 'thinking-msg';
+  div.innerHTML = `
+    <div class="msg-avatar bot">SYS</div>
+    <div class="msg-body">
+      <div class="msg-meta"><span class="msg-name">SysAdmin Agent</span></div>
+      <div class="thinking">
+        <span></span><span></span><span></span>
+        <span class="thinking-text">generating document...</span>
+      </div>
+    </div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeThinking() {
+  const t = document.getElementById('thinking-msg');
+  if (t) t.remove();
+}
+
+// ─── API call ─────────────────────────────────────────────────────────────────
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('userInput');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  autoResize(input);
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  appendMessage('user', text, null, null, null);
+  appendThinking();
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 1000,          // increase to 2000–4000 for longer documents
+        system:     SYSTEM_PROMPT,
+        messages:   [{ role: 'user', content: text }]
+      })
+    });
+
+    const data = await response.json();
+    removeThinking();
+
+    if (data.content && data.content[0]) {
+      const docText  = data.content.map(b => b.text || '').join('');
+      const docType  = detectDocType(docText);
+      const titleMatch = docText.match(/(?:TITLE|DOCUMENT|RUNBOOK|CHECKLIST|TEMPLATE)[:\s]+([^\n]{4,60})/i);
+      const docTitle = titleMatch
+        ? titleMatch[1].trim().toLowerCase()
+        : text.slice(0, 50).toLowerCase();
+
+      appendMessage('bot', 'Document generated. Review and copy below:', docText, docType, docTitle);
+    } else {
+      appendMessage('bot', 'Something went wrong. Please try again.', null, null, null);
+    }
+  } catch (err) {
+    removeThinking();
+    appendMessage('bot', 'Connection error. Check your setup and try again.', null, null, null);
+  }
+
+  isLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+</script>
+</body>
+</html>
