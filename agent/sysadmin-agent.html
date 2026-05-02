@@ -387,6 +387,9 @@ function removeThinking() {
 }
 
 // ─── API call ─────────────────────────────────────────────────────────────────
+// Requests go to /api/chat on the local Express server (server.js).
+// The server attaches the API key from .env and forwards to Anthropic.
+// The key never appears in this file or in the browser.
 async function sendMessage() {
   if (isLoading) return;
   const input = document.getElementById('userInput');
@@ -402,7 +405,7 @@ async function sendMessage() {
   appendThinking();
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
