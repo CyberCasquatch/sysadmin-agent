@@ -10,7 +10,7 @@ Built with [Claude](https://claude.ai) by Anthropic.
 
 ## What It Does
 
-Describe what you need in plain English. Get a structured, production-ready document in seconds.
+Describe what you need. Get a structured, production-ready document in seconds.
 
 **Document types:**
 - **Runbooks** — step-by-step procedures with prerequisites, commands, rollback, and verification
