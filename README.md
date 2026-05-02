@@ -51,6 +51,22 @@ Describe what you need. Get a structured, production-ready document in seconds.
 
 ![Troubleshooting tree example](TroubleshootingTree_PromptExample.png)
 
+
+**Note:** The header section can be edited in the const SYSTEM_PROMPT = `...` section of the html file. 
+Look for "- Always start with a header block: document type, title, version, date, author placeholder, severity/priority if applicable" and add variables that you want. 
+EG
+
+- Always start with every document with this exact header block:
+  Organisation: Acme IT
+  Document Type: [document type]
+  Title: [document title]
+  Version: 1.0
+  Date: [today's date]
+  Author: [leave blank]
+  Reviewed By: [leave blank]
+  Classification: Internal
+
+  
 ---
 
 ## Setup
